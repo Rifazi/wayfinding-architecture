@@ -1,0 +1,31 @@
+{
+  "name": "wayfinding-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An Express app laid out with Wayfinding Architecture",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "checkpoint": "node --experimental-strip-types --no-warnings tools/checkpoint.ts",
+    "check": "node --experimental-strip-types --no-warnings tools/check.ts",
+    "docs:regen": "node --experimental-strip-types --no-warnings tools/check.ts --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^5.1.0",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.25"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}

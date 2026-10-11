@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you refer to this work, please cite it as below."
+type: report
+title: "Wayfinding Architecture: An Architecture for Discoverable, Bounded, and Safe Change"
+abstract: >-
+  Software changes faster and more safely when every decision lives in one
+  place you can find and every change has a clear scope. Wayfinding is an
+  architectural approach that makes the ownership, impact, and scope of
+  software changes explicit, discoverable, and enforceable, with an operating
+  procedure for AI coding agents.
+authors:
+  - family-names: Iqbal
+    given-names: Rifaz
+version: "1.0.0"
+date-released: "2026-10-10"
+license: CC-BY-4.0
+keywords:
+  - software architecture
+  - modularity
+  - ownership
+  - AI coding agents
+  - domain-driven design

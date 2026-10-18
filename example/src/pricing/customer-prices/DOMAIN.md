@@ -3,7 +3,6 @@
 Parent: pricing
 Owns: each product's unit price for a given customer (list or contract price)
 Owns data: pricing_customer_prices
-Child domains: none
 Does not own: promotions, sales, the discount cap (see pricing)
 Interface: pricedItemsFor()   (used only inside pricing)
 Checkpoint: npm run checkpoint -- pricing/customer-prices
@@ -24,8 +23,15 @@ Checkpoint: npm run checkpoint -- pricing/customer-prices
 1. Insert a row with the customer's ID into pricing_customer_prices
 2. Add a case to service.test.ts if the contract has a new shape
 
-## Mirrors
-- none
+## Files
+<!-- generated: files, do not edit -->
+- `service.ts` (interface):
+  - `type ItemRequest = {productId: string; quantity: number}`
+  - `type PricedItem = ItemRequest & {unitPrice: number}`
+  - `pricedItemsFor(customerId: string, items: ItemRequest[]): Promise<PricedItem[]>`
+- `model.ts`: CustomerPrice
+- tests: `service.test.ts`
+<!-- end generated -->
 
 ## Consumers
 <!-- generated: do not edit -->

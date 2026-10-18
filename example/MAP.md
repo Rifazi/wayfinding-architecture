@@ -16,9 +16,6 @@ Each domain's interface is its `service.ts`. HTTP routes are mounted in `src/app
 - 2026-10-09  created order-total (junction): combines pricing, shipping, tax
 - 2026-10-01  created pricing child domains: customer-prices, promotions, sales
 
-## Legacy tables
-- none
-
 ## External sequences
 
 ### Nightly re-pricing

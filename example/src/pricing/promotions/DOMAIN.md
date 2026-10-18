@@ -3,7 +3,6 @@
 Parent: pricing
 Owns: seasonal promotions and promo codes; which promotion applies to an order, and how much
 Owns data: pricing_promotions
-Child domains: none
 Does not own: customer prices, sales, the discount cap (see pricing)
 Interface: promotionFor(codes, subtotal, at)   (used only inside pricing)
 Checkpoint: npm run checkpoint -- pricing/promotions
@@ -30,8 +29,14 @@ Checkpoint: npm run checkpoint -- pricing/promotions
 3. Add the rule to "Rules" with its test
 4. Run the checkpoint, then pricing's checkpoint
 
-## Mirrors
-- none
+## Files
+<!-- generated: files, do not edit -->
+- `service.ts` (interface):
+  - `type AppliedPromotion = {code: string; amount: number}`
+  - `promotionFor(codes: string[], subtotal: number, at: Date): Promise<AppliedPromotion | null>`
+- `model.ts`: Promotion
+- tests: `service.test.ts`
+<!-- end generated -->
 
 ## Consumers
 <!-- generated: do not edit -->

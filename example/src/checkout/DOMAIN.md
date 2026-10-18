@@ -1,9 +1,6 @@
 # checkout
 
-Parent: none (top-level domain)
 Owns: the checkout flow; whether an order can be placed
-Owns data: none
-Child domains: none
 Does not own: the order total (see order-total)
 Interface: startCheckout()   (HTTP: POST /checkout)
 Checkpoint: npm run checkpoint -- checkout
@@ -14,19 +11,17 @@ Checkpoint: npm run checkpoint -- checkout
 - Checkout shows the total from order-total and never computes its own.
   Enforced by: service.test.ts › "checkout total comes from order-total"
 
-## Hidden behavior
-- none known
-
 ## Recipes
 ### Add a checkout validation
 1. Add the check at the top of startCheckout() in service.ts
 2. Add a test named after the rule in service.test.ts
 3. Add the rule to "Rules" with its test
 
-## Mirrors
-- none
-
-## Consumers
-<!-- generated: do not edit -->
-- none
+## Files
+<!-- generated: files, do not edit -->
+- `service.ts` (interface):
+  - `type CheckoutResult = {orderId: string; total: OrderTotal}`
+  - `startCheckout(request: OrderRequest): Promise<CheckoutResult>`
+- `routes.ts`: routes
+- tests: `service.test.ts`
 <!-- end generated -->

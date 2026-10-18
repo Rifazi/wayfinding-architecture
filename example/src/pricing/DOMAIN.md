@@ -1,6 +1,5 @@
 # pricing
 
-Parent: none (top-level domain)
 Owns: final price (customer price, then the better of promotion or sale); discount cap
 Owns data: pricing_settings
 Child domains: customer-prices, promotions, sales
@@ -28,8 +27,19 @@ Checkpoint: npm run checkpoint -- pricing
 3. Add a test named after the new rule in service.test.ts
 4. Run the checkpoint and `npm run check`
 
-## Mirrors
-- none
+## Files
+<!-- generated: files, do not edit -->
+- `service.ts` (interface):
+  - `type Item = {productId: string; quantity: number}`
+  - `type PriceRequest = {customerId: string; items: Item[]; promoCodes?: string[]; at: Date}`
+  - `type Discount = {amount: number}`
+  - `type Price = {subtotal: number; discount: Discount; total: number}`
+  - `priceFor(request: PriceRequest): Promise<Price>`
+  - `discountFor(request: PriceRequest): Promise<Discount>`
+- `model.ts`: PricingSettings
+- `routes.ts`: routes
+- tests: `service.test.ts`
+<!-- end generated -->
 
 ## Consumers
 <!-- generated: do not edit -->

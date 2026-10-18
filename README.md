@@ -31,7 +31,8 @@ Requirement → Decision → Domain → Public Interface → Consumers → Segme
 | Domain | Owns a set of decisions and the data they need. Only it writes its own data. |
 | Child domain | A domain inside a domain, with the same layout; visible only to its parent. |
 | Junction | A domain whose rules combine other domains' decisions, such as an order total. |
-| Map | `MAP.md` and one `DOMAIN.md` per domain: discovered from code, declared by people, checked by tools. |
+| Map | `MAP.md` and one `DOMAIN.md` per domain: discovered from code (Files with signatures, Consumers), declared by people, checked by tools. |
+| One copy | Every decision, and every helper, has exactly one copy. Shared code moves into a domain both users import. |
 | Segment | A bounded, independently validatable and revertible step of a larger change. |
 | Guardrails | Structural checks run by tools; semantic checks decided by an independent QA agent. |
 
@@ -62,7 +63,7 @@ Then give your coding agent the ticket from the paper's worked example (Section 
 
 ## Status and feedback
 
-Version 1.0. This is a proposal, and its central claim is a hypothesis (Section 18). Feedback, counterexamples, and reports from teams that try it are very welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Version 1.1. This is a proposal, and its central claim is a hypothesis (Section 18). Feedback, counterexamples, and reports from teams that try it are very welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citing
 

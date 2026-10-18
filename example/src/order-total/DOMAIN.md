@@ -1,11 +1,9 @@
 # order-total
 
 Kind: junction
-Parent: none (top-level domain)
 Inputs: pricing.priceFor(), shipping.chargeFor(), tax.taxFor()
 Owns: how discount, shipping, and tax combine into an order total; total snapshots
 Owns data: order_total_snapshots
-Child domains: none
 Does not own: how discount, shipping, or tax is calculated (see pricing, shipping, tax)
 Interface: orderTotal(), snapshotTotal(), totalForOrder()
 Checkpoint: npm run checkpoint -- order-total
@@ -29,8 +27,18 @@ Checkpoint: npm run checkpoint -- order-total
 2. Update the matching rule and its test in service.test.ts
 3. Run the checkpoint, then checkout's and invoice's checkpoints
 
-## Mirrors
-- none
+## Files
+<!-- generated: files, do not edit -->
+- `service.ts` (interface):
+  - `type OrderRequest = PriceRequest & {region: string}`
+  - `type OrderTotal = {subtotal: number; discount: number; shipping: number; tax: number; total: number}`
+  - `combine(subtotal: number, discount: number, shippingFor: (eligibleSubtotal: number) => Promise<number>, taxFor: (taxable: number) => number): Promise<OrderTotal…`
+  - `orderTotal(request: OrderRequest): Promise<OrderTotal>`
+  - `snapshotTotal(orderId: string, request: OrderRequest): Promise<OrderTotal>`
+  - `totalForOrder(orderId: string): Promise<OrderTotal>`
+- `model.ts`: OrderTotalSnapshot
+- tests: `service.test.ts`
+<!-- end generated -->
 
 ## Consumers
 <!-- generated: do not edit -->

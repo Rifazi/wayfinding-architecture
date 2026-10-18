@@ -16,17 +16,16 @@ full on every task.
 <!-- Every created, merged, split, or promoted domain, newest first. -->
 - YYYY-MM-DD  created <domain>: <one-line reason>
 
-## Legacy tables
+<!--
+Add these sections only when you need them:
 
-<!-- Tables with more than one writer, until they are migrated (Section 13). -->
+## Legacy tables
+Tables with more than one writer, until they are migrated (Section 13).
 - <table>: written by <domain>, <domain> (declared exceptions)
 
 ## External sequences
-
-<!--
-Workflows that cross domains and leave the code you control: other systems,
-other teams' services, other repositories.
--->
+Workflows that cross domains and leave the code you control.
 ### <name>
 1. <step>    → <domain>.<function>()
 2. <step in an external system>
+-->

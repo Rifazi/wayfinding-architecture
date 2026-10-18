@@ -4,11 +4,13 @@
 //   node tools/check.ts --fix    regenerate the generated sections first
 //
 // Structural checks (paper, Section 10) and doc checks (Section 12) that need
-// no judgment. Semantic checks, such as duplicate authority, are left to the
+// no judgment, including the one copy of every helper (Section 3). Semantic
+// checks, such as a rule re-implemented under another name, are left to the
 // independent QA agent.
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
+import ts from 'typescript'
 
 const ROOT = resolve(import.meta.dirname, '..')
 const SRC = join(ROOT, 'src')
@@ -39,8 +41,9 @@ function discover(dir: string, parent: Domain | null) {
       domains.push(d)
       parent?.children.push(d)
       discover(p, d)
-    } else if (parent === null) {
-      fail(`${rel(p)}: folder in src/ has no DOMAIN.md`)
+    } else if (walk(p).some((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))) {
+      // A folder of code is a domain: a top-level one, or a child of the domain around it.
+      fail(`${rel(p)}: folder of code has no DOMAIN.md (every folder of code is a domain)`)
     }
   }
 }
@@ -124,6 +127,79 @@ for (const file of [...sourceFiles, ...testFiles]) {
   for (const d of domains) visit(d, [])
 }
 
+// ------------------------------------------------------------- exports and files
+
+const FILES_BLOCK = /<!-- generated: files, do not edit -->[\s\S]*?<!-- end generated -->/
+const CONSUMERS_BLOCK = /<!-- generated: do not edit -->[\s\S]*?<!-- end generated -->/
+
+const parseFile = (file: string) => ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true)
+const isExported = (n: ts.Node) => ts.canHaveModifiers(n) && !!ts.getModifiers(n)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+
+// Text on one line, comments dropped, cut at 160 characters.
+function oneLine(text: string): string {
+  const flat = text
+    .replace(/\/\/[^\n]*/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/([{(\[]) /g, '$1')
+    .replace(/ ([})\]])/g, '$1')
+    .replace(/;([})\]])/g, '$1')
+    .replace(/;$/, '')
+    .replace(/`/g, "'")
+    .trim()
+  return flat.length > 160 ? `${flat.slice(0, 160)}…` : flat
+}
+
+// Every export of a file with its signature: `name(params): return`, a type's shape,
+// a class's fields. An agent calling another domain reads this instead of the code.
+function exportsOf(file: string): { name: string; signature: string }[] {
+  const sf = parseFile(file)
+  const callable = (name: string, fn: ts.SignatureDeclaration) =>
+    `${name}(${fn.parameters.map((p) => p.getText(sf)).join(', ')})${fn.type ? `: ${fn.type.getText(sf)}` : ''}`
+  const out: { name: string; signature: string }[] = []
+  for (const node of sf.statements.filter(isExported)) {
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      out.push({ name: node.name.text, signature: callable(node.name.text, node) })
+    } else if (ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
+      // An object type's members, `;`-separated whether or not the source writes semicolons.
+      const shape = (members: ts.NodeArray<ts.TypeElement>) => `{ ${members.map((m) => oneLine(m.getText(sf))).join('; ')} }`
+      const signature = ts.isInterfaceDeclaration(node)
+        ? `interface ${node.name.text} ${shape(node.members)}`
+        : ts.isTypeLiteralNode(node.type)
+          ? `type ${node.name.text} = ${shape(node.type.members)}`
+          : `type ${sf.text.slice(node.name.getStart(sf), node.end)}`
+      out.push({ name: node.name.text, signature })
+    } else if (ts.isClassDeclaration(node) && node.name) {
+      const fields = node.members.filter(ts.isPropertyDeclaration).map((m) => m.name.getText(sf))
+      out.push({ name: node.name.text, signature: `class ${node.name.text}${fields.length ? ` { ${fields.join(', ')} }` : ''}` })
+    } else if (ts.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        const init = decl.initializer
+        const name = decl.name.getText(sf)
+        const fn = init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) ? init : undefined
+        out.push({ name, signature: fn ? callable(name, fn) : name })
+      }
+    }
+  }
+  return out.map((e) => ({ name: e.name, signature: oneLine(e.signature) }))
+}
+
+// The generated Files section: the domain's own files (a child's belong to the child),
+// the public file first with a signature per export, then the others' export names.
+function filesBlock(d: Domain): string {
+  const own = walk(d.dir).filter((f) => ownerOf(f) === d && basename(f) !== 'DOMAIN.md')
+  const tests = own.filter((f) => f.endsWith('.test.ts')).map((f) => `\`${basename(f)}\``)
+  const lines = own
+    .filter((f) => !f.endsWith('.test.ts'))
+    .sort((a, b) => Number(b === publicFile(d)) - Number(a === publicFile(d)) || a.localeCompare(b))
+    .map((f) => {
+      const exports = exportsOf(f)
+      if (f === publicFile(d)) return `- \`${basename(f)}\` (interface):\n${exports.map((e) => `  - \`${e.signature}\``).join('\n')}`
+      return `- \`${basename(f)}\`${exports.length ? `: ${exports.map((e) => e.name).join(', ')}` : ''}`
+    })
+  if (tests.length) lines.push(`- tests: ${tests.join(', ')}`)
+  return lines.length ? `<!-- generated: files, do not edit -->\n${lines.join('\n')}\n<!-- end generated -->` : ''
+}
+
 // ------------------------------------------------------------------- DOMAIN.md
 
 function header(doc: string, field: string): string | undefined {
@@ -149,17 +225,17 @@ for (const d of domains) {
   const here = rel(path)
 
   // Header matches the discovered structure.
+  // Empty means absent: a top-level domain has no Parent line, a leaf no Child domains line.
   const parent = header(doc, 'Parent')
-  const expectedParent = d.parent ? d.parent.name : 'none'
-  if (!parent || !parent.startsWith(expectedParent)) {
-    fail(`${here}: Parent is "${parent}", but the folder says ${expectedParent}`)
+  if (d.parent ? !parent?.startsWith(d.parent.name) : parent && !/^none\b/.test(parent)) {
+    fail(`${here}: Parent is "${parent ?? 'missing'}", but the folder says ${d.parent ? d.parent.name : 'top-level'}`)
   }
   const declaredChildren = listOf(header(doc, 'Child domains')).sort().join(', ')
   const actualChildren = d.children.map((c) => c.name).sort().join(', ')
   if (declaredChildren !== actualChildren) {
     fail(`${here}: Child domains lists [${declaredChildren}], folders are [${actualChildren}]`)
   }
-  for (const f of ['Owns', 'Does not own', 'Interface', 'Checkpoint']) {
+  for (const f of ['Owns', 'Interface', 'Checkpoint']) {
     if (!header(doc, f)) fail(`${here}: missing "${f}:"`)
   }
 
@@ -208,22 +284,83 @@ for (const d of domains) {
     if (!domainFiles.includes(m[1])) fail(`${here}: Recipes mention ${m[1]}, which does not exist`)
   }
 
-  // Generated Consumers section matches discovered consumers.
+  // Generated sections match what the code shows: Files, then Consumers.
   const consumers = domains
     .filter((other) => edges.get(other)?.has(d))
     .map((other) => (other.parent && other.parent !== d.parent ? id(other) : other.name))
     .sort()
-  const generated = `<!-- generated: do not edit -->\n${consumers.length ? `- ${consumers.join(', ')}\n` : '- none\n'}<!-- end generated -->`
-  const block = /<!-- generated: do not edit -->[\s\S]*?<!-- end generated -->/
-  if (!block.test(doc)) {
-    fail(`${here}: missing generated Consumers block`)
-  } else if (doc.match(block)![0] !== generated) {
-    if (FIX) {
-      doc = doc.replace(block, generated)
-      writeFileSync(path, doc)
-      console.log(`regenerated ${here}`)
-    } else {
-      fail(`${here}: Consumers section is stale; run with --fix`)
+  const generatedSections = [
+    { title: 'Files', block: FILES_BLOCK, expected: filesBlock(d) },
+    {
+      title: 'Consumers',
+      block: CONSUMERS_BLOCK,
+      expected: consumers.length ? `<!-- generated: do not edit -->\n- ${consumers.join(', ')}\n<!-- end generated -->` : '',
+    },
+  ]
+  let rewritten = false
+  for (const g of generatedSections) {
+    const found = doc.match(g.block)?.[0] ?? ''
+    if (found === g.expected) continue
+    const problem = !g.expected ? `${g.title} section is empty: remove it` : found ? `${g.title} section is stale` : `missing the generated ${g.title} block`
+    if (!FIX) {
+      fail(`${here}: ${problem}; run with --fix`)
+      continue
+    }
+    if (!g.expected) doc = doc.replace(new RegExp(`\\n*## ${g.title}\\s*\\n${g.block.source}\\n*`), '\n\n').trimEnd() + '\n'
+    else if (found) doc = doc.replace(g.block, g.expected)
+    else {
+      // Files goes before Mirrors or Consumers; Consumers goes last.
+      const at = g.title === 'Files' ? doc.search(/^## (Mirrors|Consumers)\b/m) : -1
+      const heading = `## ${g.title}\n${g.expected}\n`
+      doc = at < 0 ? `${doc.trimEnd()}\n\n${heading}` : `${doc.slice(0, at)}${heading}\n${doc.slice(at)}`
+    }
+    rewritten = true
+  }
+  if (rewritten) {
+    writeFileSync(path, doc)
+    console.log(`regenerated ${here}`)
+  }
+}
+
+// ------------------------------------------------------------ one copy of every helper
+
+// A function with the same tokens in two domains is a second copy of one decision, however
+// it is formatted. Move it into a domain both import (a sibling child, else a top-level
+// domain), or declare the pair under Mirrors in a DOMAIN.md that names the other domain.
+{
+  const copies = new Map<string, { file: string; domain: Domain; name: string }[]>()
+  for (const file of sourceFiles) {
+    const domain = ownerOf(file)
+    if (!domain) continue
+    const sf = parseFile(file)
+    for (const stmt of sf.statements) {
+      const fns: { name: string; node: ts.Node }[] = []
+      if (ts.isFunctionDeclaration(stmt) && stmt.name && stmt.body) fns.push({ name: stmt.name.text, node: stmt })
+      if (ts.isVariableStatement(stmt)) {
+        for (const decl of stmt.declarationList.declarations) {
+          const init = decl.initializer
+          if (init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init))) fns.push({ name: decl.name.getText(sf), node: stmt })
+        }
+      }
+      for (const fn of fns) {
+        const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.Standard, fn.node.getText(sf))
+        const tokens: string[] = []
+        for (let t = scanner.scan(); t !== ts.SyntaxKind.EndOfFileToken; t = scanner.scan()) tokens.push(scanner.getTokenText())
+        if (tokens.length < 30) continue
+        const key = tokens.join(' ')
+        copies.set(key, [...(copies.get(key) ?? []), { file, domain, name: fn.name }])
+      }
+    }
+  }
+  const mirrors = (d: Domain) => section(readFileSync(join(d.dir, 'DOMAIN.md'), 'utf8'), 'Mirrors')
+  const declared = (a: Domain, b: Domain) => mirrors(a).includes(b.name) || mirrors(b).includes(a.name)
+  for (const group of copies.values()) {
+    const domainsHere = new Set(group.map((c) => c.domain))
+    if (domainsHere.size < 2) continue
+    for (const c of group) {
+      const others = group.filter((o) => o.domain !== c.domain)
+      if (others.every((o) => declared(c.domain, o.domain))) continue
+      fail(`${rel(c.file)}: ${c.name}() is also written in ${[...new Set(others.map((o) => id(o.domain)))].join(', ')}; move it into a domain both import`)
     }
   }
 }
@@ -257,4 +394,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`✓ ${domains.length} domains checked: structure, data ownership, rules, recipes, consumers, map`)
+console.log(`✓ ${domains.length} domains checked: structure, data ownership, rules, recipes, files, consumers, helpers, map`)

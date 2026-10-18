@@ -1,9 +1,6 @@
 # tax
 
-Parent: none (top-level domain)
 Owns: tax rate and tax amount for a region
-Owns data: none
-Child domains: none
 Does not own: what is taxable in an order (see order-total)
 Interface: taxFor()
 Checkpoint: npm run checkpoint -- tax
@@ -24,8 +21,13 @@ Checkpoint: npm run checkpoint -- tax
 2. Add a case to service.test.ts
 3. Run the checkpoint
 
-## Mirrors
-- none
+## Files
+<!-- generated: files, do not edit -->
+- `service.ts` (interface):
+  - `type Tax = {rate: number; amount: number}`
+  - `taxFor(taxableAmount: number, region: string): Tax`
+- tests: `service.test.ts`
+<!-- end generated -->
 
 ## Consumers
 <!-- generated: do not edit -->

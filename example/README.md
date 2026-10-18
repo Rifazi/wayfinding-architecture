@@ -29,8 +29,15 @@ model.ts          its entities (TypeORM); private to the domain
 service.ts        its interface and business rules; the only file other domains import
 routes.ts         its HTTP endpoints, mounted in app.ts
 service.test.ts
-DOMAIN.md
+DOMAIN.md         header, rules, hidden behavior, recipes, and two generated sections
 ```
+
+A `DOMAIN.md` has only what it needs: Owns, Interface and Checkpoint are required;
+Parent, Owns data, Child domains, Does not own, and every section are left out when
+they would say "none". The generated **Files** section lists each file with its
+exports, and the `service.ts` entry carries each signature, so an agent can call a
+domain without opening its code. The generated **Consumers** section lists who
+imports it.
 
 A domain that stores nothing (tax, checkout, invoice) has no `model.ts`. A
 domain with no endpoints of its own (the child domains, tax, shipping,
@@ -84,16 +91,19 @@ Structural guardrails (paper, Section 10):
 - domain code imports nothing outside the domains except `db.ts`
 - every table is defined by exactly one domain's `model.ts`, carries its prefix, and is listed under "Owns data"
 - every top-level domain is on `MAP.md`, and junctions are marked as junctions
+- every folder of code is a domain: a folder with code and no `DOMAIN.md` fails
+- one copy of every helper: the same function (compared by tokens, not formatting) written in two domains fails, unless both declare it under Mirrors
 
 Doc checks (Section 12):
 
 - every rule has an *Enforced by* test, and that test exists
 - no rule appears in two domains
 - every file named in a Recipe exists
-- the generated Consumers sections match the code
+- the generated Files and Consumers sections match the code; an empty one is removed
 
 Try breaking one: import `../pricing/promotions/service.ts` from
-`src/invoice/service.ts`, then run `npm run check`.
+`src/invoice/service.ts`, or paste `layout()` from `src/invoice/service.ts` into
+`src/checkout/service.ts`, then run `npm run check`.
 
 ## Try the worked example
 

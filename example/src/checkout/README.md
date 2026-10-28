@@ -1,8 +1,9 @@
 # checkout
 
+Kind: domain
 Owns: the checkout flow; whether an order can be placed
 Does not own: the order total (see order-total)
-Interface: startCheckout()   (HTTP: POST /checkout)
+Interface: startCheckout()
 Checkpoint: npm run checkpoint -- checkout
 
 ## Rules
@@ -17,11 +18,7 @@ Checkpoint: npm run checkpoint -- checkout
 2. Add a test named after the rule in service.test.ts
 3. Add the rule to "Rules" with its test
 
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type CheckoutResult = {orderId: string; total: OrderTotal}`
-  - `startCheckout(request: OrderRequest): Promise<CheckoutResult>`
-- `routes.ts`: routes
-- tests: `service.test.ts`
+## Contains
+<!-- generated: do not edit -->
+- routes (adapter)
 <!-- end generated -->

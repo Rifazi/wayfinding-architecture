@@ -27,19 +27,6 @@ Checkpoint: npm run checkpoint -- order-total
 2. Update the matching rule and its test in service.test.ts
 3. Run the checkpoint, then checkout's and invoice's checkpoints
 
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type OrderRequest = PriceRequest & {region: string}`
-  - `type OrderTotal = {subtotal: number; discount: number; shipping: number; tax: number; total: number}`
-  - `combine(subtotal: number, discount: number, shippingFor: (eligibleSubtotal: number) => Promise<number>, taxFor: (taxable: number) => number): Promise<OrderTotal…`
-  - `orderTotal(request: OrderRequest): Promise<OrderTotal>`
-  - `snapshotTotal(orderId: string, request: OrderRequest): Promise<OrderTotal>`
-  - `totalForOrder(orderId: string): Promise<OrderTotal>`
-- `model.ts`: OrderTotalSnapshot
-- tests: `service.test.ts`
-<!-- end generated -->
-
 ## Consumers
 <!-- generated: do not edit -->
 - checkout, invoice

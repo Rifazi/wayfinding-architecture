@@ -1,5 +1,6 @@
 # promotions
 
+Kind: child domain
 Parent: pricing
 Owns: seasonal promotions and promo codes; which promotion applies to an order, and how much
 Owns data: pricing_promotions
@@ -28,15 +29,6 @@ Checkpoint: npm run checkpoint -- pricing/promotions
 2. Add a test named after the rule in service.test.ts
 3. Add the rule to "Rules" with its test
 4. Run the checkpoint, then pricing's checkpoint
-
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type AppliedPromotion = {code: string; amount: number}`
-  - `promotionFor(codes: string[], subtotal: number, at: Date): Promise<AppliedPromotion | null>`
-- `model.ts`: Promotion
-- tests: `service.test.ts`
-<!-- end generated -->
 
 ## Consumers
 <!-- generated: do not edit -->

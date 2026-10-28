@@ -2,7 +2,7 @@
 
 *An Architecture for Discoverable, Bounded, and Safe Change*
 
-Version 1.1 · October 18, 2026 · Rifaz Iqbal
+Version 1.2 · October 28, 2026 · Rifaz Iqbal
 
 ## Abstract
 
@@ -66,7 +66,7 @@ In a city, people rarely navigate street by street. They head for landmarks: the
 
 In a codebase, the streets are the code itself: files, folders, imports, and call chains. Navigating street by street is what happens when there is no architecture to guide you. You search for a keyword, open a file, follow an import, read, search again, and hope the trail leads to the right place.
 
-In Wayfinding, the landmarks are **domains**. To change how promotions work, you do not search for "promotion" and sift through every match. You head for the pricing domain, and its `DOMAIN.md` points you to promotions, the child domain that holds the promotion rules. From there you look outward to the domains that use pricing. The change becomes a short series of known stops instead of a walk down every street.
+In Wayfinding, the landmarks are **domains**. To change how promotions work, you do not search for "promotion" and sift through every match. You head for the pricing domain, and its `README.md` points you to promotions, the child domain that holds the promotion rules. From there you look outward to the domains that use pricing. The change becomes a short series of known stops instead of a walk down every street.
 
 A landmark only works if there is one of it. Two town squares with the same name do not help anyone find their way; they get people lost. Code is the same: when two places decide the discount, neither can be trusted, and every change to that rule becomes guesswork. That is why each decision belongs to exactly one domain.
 
@@ -91,18 +91,18 @@ Each term means exactly one thing, and each concept has exactly one term. *Owns*
 | Decision | A rule that determines behavior, such as how a discount is calculated | A value; the same value can appear in many places |
 | Domain | The one place a set of decisions, and the data they need, lives | A DDD domain or bounded context, which is drawn around a model rather than around decisions |
 | Child domain | A domain inside another domain, reached only through its parent | A folder; a child has its own interface, data, and docs |
+| Adapter | Code that connects a domain to something outside it: HTTP, a database, an external system, or legacy code | A domain; an adapter makes no business decisions |
+| Shared | Helpers that make no decision and serve several parts of one domain, kept in its shared/ subfolder | A top-level library; shared code lives inside a domain unless no domain can own it |
 | Junction | A domain whose rules combine decisions from other top-level domains | A parent combining its own children, which stays inside one domain |
-| Public interface | The only way into a domain from outside: one explicit file | Internal functions and files, which no other domain may reach |
+| Public interface | The only way into a domain from outside | Internal functions, which no other domain may call |
 | Consumer | Code that depends on a domain's public interface | The domain that owns the decision |
 | Route | The steps a change takes, from requirement to checkpoint | A runtime call path |
 | Segment | One step of a route that can be validated and reverted on its own | A ticket or pull request, which may hold one segment or several |
 | Checkpoint | The tests and checks a segment must pass | The final release check; every segment has its own |
-| Map | `MAP.md` plus each domain's `DOMAIN.md` | Full documentation; the map points to code rather than explaining it |
+| Map | `MAP.md` plus each folder's `README.md` | Full documentation; the map points to code rather than explaining it |
 | Discovered / declared | Map information generated from code / written in the docs | — |
 | Guardrails | Automated checks that keep the structure from drifting | Code review |
 | Mirror | A deliberate, declared copy of a decision, such as a client-side price preview | Duplicate authority, which is an undeclared copy |
-| Helper | Code several places need that is not a business rule of its own, such as parsing a request body | A decision; but a helper still has exactly one copy (Section 3) |
-| Files section | The generated list of a domain's files and exports, with the public file's signatures | Declared documentation; it is discovered from code |
 
 ## 3. Each Decision Belongs to One Domain
 
@@ -147,23 +147,6 @@ Sometimes a decision must be computed in a second place on purpose: client-side 
 
 An undeclared mirror is simply duplicate authority.
 
-### One copy of every helper
-
-Duplicate authority is not only about business rules. Plumbing carries small decisions of its own: what a malformed request body returns, which status code an error gets, how money is rounded for display. It is also the code most often copied. A function that parses a request body gets pasted into every domain that has a route, and each copy can drift.
-
-Nesting makes this worse. A child domain is visible only to its parent and never depends on it (Section 4), so two children, or children of two different domains, cannot reach a helper that sits in one of them. An agent that cannot import a helper writes its own. In one early deployment, the same request-parsing and response-shaping functions had been copied into six domains of a single backend, each copy logged as a mirror.
-
-> A helper has one copy.
-
-When a second domain needs code that lives in one domain's private files, the code moves into a domain both import, in its own segment before either caller changes. The copies then point at it and are deleted:
-
-- users that share a parent: a **sibling child domain** of that parent, never a file the parent owns, because children may not depend on their parent
-- users in different top-level domains: a **top-level domain** of its own, a plain one such as `http-response`, on the map
-
-Copying is the exception, for helpers that cannot share code at all, such as separately deployed units with no common package. Then it is a mirror: declared under Mirrors in both domains, with the reason. An undeclared copy is duplicate authority.
-
-Looking before writing is part of the rule. Each domain's Files section (Section 8) lists every export with its signature, so an agent can find the helper that exists before it writes another.
-
 ### Domains, not teams
 
 Teams own domains — often recorded through code-owner files — but that is an organizational mapping layered on top. A decision belongs to exactly one domain even when several teams contribute to it.
@@ -203,14 +186,12 @@ Every domain has the same files, whatever its size. The examples in this paper a
 src/pricing/
 ├── model.ts            tables: pricing_settings
 ├── service.ts          interface and business rules: priceFor(), discountFor()
-├── routes.ts           HTTP endpoints; they call the service
+├── routes/             adapter: HTTP endpoints that call the service
 ├── service.test.ts
-└── DOMAIN.md
+└── README.md
 ```
 
-Only `service.ts` is public: other domains import it and nothing else. The model is private, so only the domain's own service reads or writes its tables. A domain with no stored data has no `model.ts`, and a domain with no endpoints has no `routes.ts`.
-
-The name `service.ts` is this paper's convention. What matters is that a domain has exactly one public file. Where a framework names files differently, the public file is the code file named after the folder (a React page's `ProjectListPage/ProjectListPage.tsx`), which needs no re-export file to be the interface.
+Only `service.ts` is public: other domains import it and nothing else. The model is private, so only the domain's own service reads or writes its tables. A domain with no stored data has no `model.ts`, and a domain with no endpoints has no `routes/` adapter.
 
 ### One writer per table
 
@@ -240,25 +221,20 @@ In this example, what a customer pays depends on three things: who the customer 
 src/pricing/
 ├── model.ts                tables: pricing_settings
 ├── service.ts              priceFor(), discountFor(); combines the children
-├── routes.ts               HTTP endpoints for prices
+├── routes/                 adapter: HTTP endpoints for prices
 ├── service.test.ts
-├── DOMAIN.md
+├── README.md
+├── shared/                 helpers used by the child domains
 ├── customer-prices/        child domain: each customer's base price
 ├── promotions/             child domain: seasonal promotions and promo codes
 │   ├── model.ts            tables: pricing_promotions
 │   ├── service.ts          promotionFor(); promotion rules
 │   ├── service.test.ts
-│   └── DOMAIN.md
+│   └── README.md
 └── sales/                  child domain: time-limited markdowns on products
 ```
 
-A child domain is simply a domain inside a domain. The one difference is reach: pricing's service is used across the system, while promotions' service is used only inside pricing. That is also why promotions has no `routes.ts`: nothing outside pricing reaches it directly. Pricing's own data is small: `pricing_settings` holds the discount cap, so finance can change it without a code change.
-
-#### A folder of code is a domain
-
-A folder is a boundary, so it is declared like one. Every folder of code inside a domain is a child domain with its own `DOMAIN.md`, as small as a single file: a component, a module, a handler, a table. A folder of code with no `DOMAIN.md` is code on no domain, and tooling flags it. Folders of tests and fixtures are not domains. Each `DOMAIN.md` then describes only its own folder, and each rule is written in the narrowest domain whose code implements it. A parent keeps only its own decisions: its public file, its entry point, and the rule that combines its children.
-
-This does not ask for a folder per file. A long file in a domain stays a file until it has its own rules and its own reason to change (see below).
+A child domain is simply a domain inside a domain. The one difference is reach: pricing's service is used across the system, while promotions' service is used only inside pricing. That is also why promotions has no `routes/` adapter: nothing outside pricing reaches it directly. Pricing's own data is small: `pricing_settings` holds the discount cap, so finance can change it without a code change.
 
 #### When to create a child domain
 
@@ -277,7 +253,6 @@ Do not split just because a file got long. A child that shares data or rules wit
 - **Children never depend on their parent.** Dependencies run downward: pricing calls promotions, never the reverse.
 - **Siblings reach each other only through their interfaces, and never in a cycle.** If siblings need each other often, their combination belongs in the parent.
 - **Each table belongs to the child that writes it.** `pricing_promotions` belongs to promotions, not to pricing as a whole.
-- **Shared code is a domain too.** A helper two children need is a sibling child; one that children of different top-level domains need is a top-level domain (Section 3).
 
 #### The parent combines its children
 
@@ -290,7 +265,6 @@ This is the junction idea inside one domain. The difference is scope: a parent c
 The child's table lives in its own `model.ts`, as an entity:
 
 ```ts
-// pricing/promotions/model.ts (private to promotions)
 @Entity('pricing_promotions')
 export class Promotion {
   @PrimaryColumn('text') id: string
@@ -306,16 +280,15 @@ Schema and migrations come from the entities, so each domain's tables are define
 What the service returns is what the parent sees, and it is deliberately different from the entity:
 
 ```ts
-// pricing/promotions/service.ts (public to pricing)
 export type AppliedPromotion = {
   code: string
-  amount: number         // cents, already calculated for this order
+  amountCents: number
 }
 
 export async function promotionFor(codes: string[], subtotal: number, at: Date): Promise<AppliedPromotion | null>
 ```
 
-Pricing receives the *result* of the decision, `amount`, never the raw row. Holding the row, pricing could recompute the promotion itself, which is duplicate authority again.
+Pricing receives the *result* of the decision, `amountCents`, never the raw row. Holding the row, pricing could recompute the promotion itself, which is duplicate authority again.
 
 #### Changes inside a child
 
@@ -336,23 +309,14 @@ Consumers outside the parent, such as checkout or invoice, enter the route only 
 
 Boundaries move as the system grows. When something outside the parent needs a child directly, promote the child to a top-level domain, and leave the parent calling it through its interface. When a child stops changing on its own, or always changes together with its parent, merge it back. Either move is a structural change: its own segment, logged in `MAP.md`.
 
-#### Splitting a domain that has grown
-
-A domain needs splitting when its `DOMAIN.md` has grown to describe several things, or when finding one function means opening many files. The split is a refactor, so it follows the shorter route for changes that are not decisions (Section 6): behavior unchanged, one domain per segment, checkpoint at the end.
-
-1. One child domain per module that has its own rules or its own reason to change.
-2. Code two children share becomes a sibling child, never something the parent owns.
-3. The parent keeps its public file, its entry point, and the rule that combines the children.
-4. Each rule moves into the child that implements it, with its test.
-5. The parent's `DOMAIN.md` lists the children and no longer describes them.
-
 #### Child domains on the map
 
-`MAP.md` lists only top-level domains, and each parent's `DOMAIN.md` lists its children. The map stays short, and nesting adds one more level of progressive disclosure. A child's `DOMAIN.md` uses exactly the same sections as its parent's (Section 12 shows the one for pricing). Here is the one for promotions:
+`MAP.md` lists only top-level domains, and each parent's `README.md` lists its children and adapters in a generated Contains section. The map stays short, and nesting adds one more level of progressive disclosure. A child's `README.md` uses exactly the same sections as its parent's (Section 12 shows the one for pricing). Here is the one for promotions:
 
 ```markdown
 # promotions
 
+Kind: child domain
 Parent: pricing
 Owns: seasonal promotions and promo codes; which promotion applies to an order
 Owns data: pricing_promotions
@@ -377,13 +341,12 @@ Checkpoint: npm run checkpoint -- pricing/promotions
 3. Add the rule to "Rules" with its test
 4. Run the checkpoint
 
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type AppliedPromotion = {code: string; amount: number}`
-  - `promotionFor(codes: string[], subtotal: number, at: Date): Promise<AppliedPromotion | null>`
-- `model.ts`: Promotion
-- tests: `service.test.ts`
+## Mirrors
+- none
+
+## Contains
+<!-- generated: do not edit -->
+- none
 <!-- end generated -->
 
 ## Consumers
@@ -392,9 +355,69 @@ Checkpoint: npm run checkpoint -- pricing/promotions
 <!-- end generated -->
 ```
 
-The header has no `Child domains` line, and there is no Mirrors section: a line or section that would say "none" is left out (Section 12). The Files section is generated, and the signature under `service.ts` is all pricing needs to call `promotionFor()`.
-
 The discount cap is not here. It applies across promotions and sales, so it belongs to the parent, which combines them.
+
+### Decisions and adapters
+
+Code in a domain is one of two kinds. **Decisions** are the rules the domain owns. **Adapters** connect the domain to something outside it: HTTP, a database, a queue, an external system, or legacy code. An adapter makes no business decisions. It may hold technical ones about its outside system, such as how failed calls are retried.
+
+Sorting code this way helps draw domains. Set the adapters aside, and what remains is decisions, grouped by the coherence test. Each adapter then belongs to the domain it serves.
+
+An adapter gets its own folder and `README.md`, like a child domain. The database adapter, `model.ts`, stays a file: it only maps the tables the domain's `README.md` already lists under *Owns data*.
+
+```
+src/payments/
+├── service.ts
+├── service.test.ts
+├── model.ts
+├── README.md        Kind: domain
+├── routes/
+│   ├── routes.ts
+│   ├── routes.test.ts
+│   └── README.md    Kind: adapter
+└── stripe/
+    ├── client.ts
+    ├── client.test.ts
+    └── README.md    Kind: adapter
+```
+
+Every `README.md` uses the same template and opens with a *Kind* line: domain, child domain, junction, adapter, or shared. One file name and one shape serve every folder. For an adapter, *Rules* holds technical rules only:
+
+```markdown
+# stripe
+
+Kind: adapter
+Parent: payments
+Owns: calls to Stripe for charges and refunds
+Does not own: whether a charge or refund happens (see payments)
+Interface: charge(), refund()   (used only inside payments)
+Checkpoint: npm test -- payments/stripe
+
+## Rules
+- Failed calls retry 3 times with backoff.
+  Enforced by: client.test.ts › "retries a failed charge 3 times"
+- Every charge carries an idempotency key.
+  Enforced by: client.test.ts › "charge sends an idempotency key"
+
+## Hidden behavior
+- Test-mode and live-mode data are separate; test keys never see live charges.
+
+## Contains
+<!-- generated: do not edit -->
+- none
+<!-- end generated -->
+
+## Consumers
+<!-- generated: do not edit -->
+- payments
+<!-- end generated -->
+```
+
+Three rules keep adapters in place:
+
+- An adapter belongs to exactly one domain. Only that domain's service calls it, and an inbound adapter, such as `routes/`, calls only that service.
+- Each external system is reached through one domain's adapter, so every rule about that system has one owner. `MAP.md` names that domain under *External systems*.
+- A business rule found in an adapter is misplaced. It moves to the domain's service.
 
 ### Shape is illustrative
 
@@ -488,23 +511,23 @@ src/
 ├── pricing/                    domain: discount, price
 │   ├── model.ts
 │   ├── service.ts              discountFor(), priceFor()
-│   ├── routes.ts
+│   ├── routes/                 adapter: HTTP
 │   ├── customer-prices/        child domain
 │   ├── promotions/             child domain
 │   ├── sales/                  child domain
-│   └── DOMAIN.md
+│   └── README.md
 ├── tax/                        domain: tax amount (no stored data, so no model.ts)
 │   ├── service.ts              taxFor()
-│   └── DOMAIN.md
+│   └── README.md
 ├── shipping/                   domain: shipping charge
 │   ├── model.ts                tables: shipping_rates
 │   ├── service.ts              chargeFor()
-│   └── DOMAIN.md
+│   └── README.md
 ├── order-total/                junction: order total
 │   ├── model.ts                tables: order_total_snapshots
 │   ├── service.ts              orderTotal(): the combination rule, nothing else
 │   ├── service.test.ts
-│   └── DOMAIN.md               declares: junction, inputs, rule
+│   └── README.md               declares: junction, inputs, rule
 ├── checkout/                   consumes order-total
 ├── invoice/                    consumes order-total
 ├── order-api/                  consumes order-total
@@ -765,17 +788,11 @@ The map is a navigation layer, not a documentation system: a list of domains, sh
 
 > Discover what the code can show. Declare what only humans know. Check that the two agree.
 
-- **Discovered** — generated from code: domains, files and their exports, the signatures of each public interface, imports, direct consumers, test locations.
+- **Discovered** — generated from code: domains, exports, imports, direct consumers, public interfaces, test locations.
 - **Declared** — stated in the docs, by people or agents: what a domain owns and does not own, junctions, mirrors, external relationships, intended boundaries, and business terminology.
 - **Check** — guardrails verify that the two still agree.
 
-The map has two levels: `MAP.md`, a short index of domains and junctions, and a `DOMAIN.md` in each domain holding its full entry. Section 12 shows both. Generated sections are marked so nobody edits them by hand.
-
-### The Files section
-
-Each `DOMAIN.md` carries a generated **Files** section: every file the domain holds (a child domain lists its own), public file first, with each file's exports. Under the public file, each export gets one line with its signature: a function's parameters and return type, a type's shape, a class's constructor and public members. Comments are dropped and long lines are cut.
-
-Its purpose is to stop reading. A caller who wants to use another domain reads the signature and calls it. Without signatures, Files would list names only, and the caller would open the file to learn the arguments, which is exactly the reading the map was meant to replace. Files is also where an agent looks for a helper before writing one (Section 3). Because it is generated, it cannot drift: a stale Files section fails the check like a stale Consumers section.
+The map has two levels: `MAP.md`, a short index of domains and junctions, and a `README.md` in each domain, child domain, and adapter holding its full entry. Section 12 shows both. Generated sections are marked so nobody edits them by hand.
 
 ## 9. What the Map Cannot See
 
@@ -809,22 +826,23 @@ These can be checked by tooling with no human judgment:
 - undeclared crossings, where a change adds a dependency across a boundary without a declared exception
 - reads of another domain's raw tables instead of its published read views
 - writes to a domain's tables from code outside that domain
-- imports of anything in another domain other than its public file
+- imports of anything in another domain other than its `service.ts`
 - imports of a child domain from outside its parent
 - a child domain that depends on its parent, or sibling children that depend on each other in a cycle
 - new writers to a legacy table beyond its declared exceptions (Section 13)
-- the same function written in two domains, unless both declare it as a mirror; comparing token streams means formatting and comments do not hide a copy (Section 3)
-- code in a folder with no `DOMAIN.md`, in particular code a change touched
-- a change that edits a domain's ownership fields (Owns, Does not own, Mirrors) or adds or removes a `DOMAIN.md`, reported to QA as a structural change
+- dead code: exports, files, functions, or folders that nothing uses and no declared consumer needs
+- an adapter called by anything other than its own domain's service, or an inbound adapter that calls anything else
+- an external system's client library imported from more than one domain
+- a top-level shared/ folder not declared in MAP.md, or shared code that imports from its siblings
 
 ### Semantic guardrails (assisted)
 
 These require understanding what code *means*. Tooling flags candidates; the independent QA agent decides:
 
 - **duplicate authority**: logic outside the owning domain that appears to re-implement its decision
-- **near-copies of a helper**: the same function renamed, reordered, or lightly rewritten in a second domain; identical copies are caught mechanically, these are for QA
 - **undeclared mirrors**: a second implementation of a decision that is not declared as a mirror
 - **misplaced decisions**: a rule implemented in a consumer instead of the domain that owns it
+- **near-copies**: new code that repeats an existing interface or shared helper instead of calling it
 
 The goal is not to make every rule absolute. The goal is to make important structural decisions visible and verifiable, so that exceptions are deliberate rather than accidental.
 
@@ -864,9 +882,9 @@ The map from Section 8 becomes a handful of files, one for each level of progres
 | --- | --- | --- |
 | Agent instructions | Repository | How to walk the route, and the rules the agent must follow |
 | `MAP.md` | Map | One line per top-level domain and junction: what it owns and its interface |
-| `DOMAIN.md` | Domain | Rules, hidden behavior, recipes, and generated sections (Files, Consumers) |
+| `README.md` | Folder | Rules, hidden behavior, recipes, and generated sections |
 
-The goal is speed. An agent that starts from explicit instructions spends its time changing code, not reconstructing how the system works. Writing and maintaining these files costs the agent seconds; the payoff is fewer wrong changes and faster review. Wayfinding sets no context budgets: the relevant context is naturally small, because the domain, consumers, and rules are known before reading begins.
+The goal is speed. An agent that starts from explicit instructions spends its time changing code, not reconstructing how the system works. Writing and maintaining these files costs the agent seconds; the payoff is fewer wrong changes and faster review. Wayfinding sets no context budgets. It keeps code reads small at the source instead: the domain, consumers, and rules are known before reading begins, and the code holds nothing the agent does not need (see Minimizing code reads).
 
 **Agent instructions** live in whatever file the agent tool loads automatically, such as `AGENTS.md`. They teach the route:
 
@@ -875,28 +893,32 @@ The goal is speed. An agent that starts from explicit instructions spends its ti
 
 Before writing code:
 1. Read MAP.md and find the domain that owns the decision you are changing.
-2. Read that domain's DOMAIN.md: rules, hidden behavior, recipes.
+2. Read that domain's README.md: rules, hidden behavior, recipes.
 3. Write down the route: decision, domain, consumers, segments.
 
 While changing code:
-- Find code through MAP.md, then DOMAIN.md, then its Files section. Open a
-  file only for code you will change.
 - Change a decision only in its owning domain.
 - Reach other domains only through their public interface.
 - Never re-implement another domain's decision; call it.
-- Look for a helper before writing one. If a second domain needs code that
-  lives in one domain's private files, move it into a domain both import,
-  in its own segment; never copy it.
-- Every folder of code is a domain; give a new folder a DOMAIN.md.
+- Before writing new code, look for an interface or shared helper
+  that already does the job, and reuse it.
+- Put a shared helper in the shared/ folder of the nearest parent
+  of its callers. Use the top level only if no domain can own it,
+  and declare it in MAP.md.
+- Write only the code the decision needs, and no comments;
+  behavior goes in README.md.
 - If no domain owns the decision and only one place uses it, record it under
   that domain's "Owns". Create a new domain only when a second place needs it;
   do it in its own segment and log it in MAP.md.
-- If DOMAIN.md and the code disagree, a test this segment did not modify decides.
+- If README.md and the code disagree, a test this segment did not modify decides.
   Fix whichever side is wrong and note the correction.
 
 Before finishing:
-- Update Rules, Hidden behavior, and Recipes in every DOMAIN.md you touched.
+- Update Rules, Hidden behavior, and Recipes in every README.md you touched.
 - Never edit generated sections; regenerate them.
+- Keep each README.md small: one line per rule, and delete what is no longer true.
+- Delete code, tests, and folders this segment left unused,
+  unless a declared consumer still needs them.
 - Put any change to "Owns" or "Does not own" in its own segment,
   so QA sees it separately.
 ```
@@ -918,16 +940,20 @@ Before finishing:
 
 ## Legacy tables
 - customers: written by legacy-admin, crm-sync (declared exceptions)
+
+## External systems
+- Stripe: payments/stripe
 ```
 
-**`DOMAIN.md`** holds the domain's full map entry, plus what an agent needs to work there without reverse-engineering the code:
+**`README.md`** holds the folder's full map entry, plus what an agent needs to work there without reverse-engineering the code:
 
 ```markdown
 # pricing
 
+Kind: domain
+Parent: none (top-level domain)
 Owns: final price (customer price, then the better of promotion or sale), discount cap
 Owns data: pricing_settings
-Child domains: customer-prices, promotions, sales
 Does not own: tax, shipping, order total (see order-total)
 Interface: priceFor(), discountFor()
 Checkpoint: npm test -- pricing
@@ -953,18 +979,10 @@ Checkpoint: npm test -- pricing
 ## Mirrors
 - web/discount-preview (pricing wins on disagreement)
 
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type Item = {productId: string; quantity: number}`
-  - `type PriceRequest = {customerId: string; items: Item[]; promoCodes?: string[]; at: Date}`
-  - `type Discount = {amount: number}`
-  - `type Price = {subtotal: number; discount: Discount; total: number}`
-  - `priceFor(request: PriceRequest): Promise<Price>`
-  - `discountFor(request: PriceRequest): Promise<Discount>`
-- `model.ts`: PricingSettings
-- `routes.ts`: routes
-- tests: `service.test.ts`
+## Contains
+<!-- generated: do not edit -->
+- customer-prices, promotions, sales (child domains)
+- routes (adapter)
 <!-- end generated -->
 
 ## Consumers
@@ -973,9 +991,7 @@ Checkpoint: npm test -- pricing
 <!-- end generated -->
 ```
 
-Pricing has no `Parent` line because it is top-level, and the earlier promotions entry had no `Child domains` line because it has none. The two required header lines beyond Owns are Interface and Checkpoint; the rest appear only when they have something to say.
-
-Some agent tools also load instruction files from a subfolder when they work inside it. Where yours does, `DOMAIN.md` can double as that file, so the agent reads the right domain's rules without being told to.
+Some agent tools also load instruction files from a subfolder when they work inside it. Where yours does, that file can simply point to the folder's `README.md`, so the agent reads the right rules without being told to.
 
 **Sequences that cross domains** are owned by junctions in code (Section 5). Steps that no code you control can own — in another system, another team's service, or another repository — are recorded where they touch your code: under **Hidden behavior** in the domain where the sequence enters or leaves the system, or, when they span several domains, in an **External sequences** section of `MAP.md`:
 
@@ -988,41 +1004,64 @@ Some agent tools also load instruction files from a subfolder when they work ins
 3. Decision event returns                     → ledger.recordChargeback()
 ```
 
-### Finding code
-
-An agent that has the map should use it in a fixed order, and stop where the map stops:
-
-```
-MAP.md → the domain's DOMAIN.md → its child's DOMAIN.md → Files and signatures → outline of one file → the range to change
-```
-
-1. `MAP.md` names the domain; its `DOMAIN.md` names the child domain, if any.
-2. The Files section names the file and its exports. To call another domain, the signature is enough.
-3. Open a file only for code the segment will change, and read only the range it needs.
-4. Search the whole repository only for code that belongs to no domain. A search for a keyword inside the domain's folder replaces a search across the repository.
-5. Trust the docs. If a `DOMAIN.md` is wrong, fix it or report it; do not rebuild the map from the code.
-
-This order is not automatic. Having the map in the repository does not stop an agent from reading the map and then reading the code anyway (Section 15 reports one case). What changes behavior is the instruction, together with a Files section that makes the shortcut safe.
-
 ### What goes in the files
 
 > Write down what the code cannot tell you. Do not restate what it can, unless the restatement is anchored to a test.
 
 - **Freely:** workflows that leave the repository, why a rule exists, traps ("never call X before Y"), business vocabulary, and recipes for common tasks.
 - **Anchored:** business rules, in plain English, each with an *Enforced by* test. The agent reads the sentence instead of reverse-engineering the code. The test makes the sentence checkable: a rule whose test no longer exists, or whose test changed while the rule did not, is flagged.
-- **Not at all:** anything empty. A header line or section that would say "none" is left out; a domain nothing imports has no Consumers section; a domain with nothing hidden has no Hidden behavior section. Empty sections are read on every task, say nothing, and invite filler.
 
 A rule restated without an anchor is a second authority in prose. When the code changes and the sentence does not, the agent trusts the sentence.
+
+### Minimizing code reads
+
+Every line an agent reads costs tokens and attention. Wayfinding keeps code reads small in four ways: the map narrows which files are opened, small code narrows how much of each file is read, reuse means each capability is read once rather than once per copy, and the absence of comments means behavior is read once, in README.md, not twice.
+
+**Code is as small as its decisions.** A domain holds only what its decisions need: no dead code, no speculative abstraction, no wrappers that only forward a call, no second copy of a rule. Small means fewer lines, not shorter names. A name that has to be decoded costs more reading than it saves.
+
+**Code is reused, not rewritten.** Every capability exists once, and every caller reuses it. A near-copy costs an agent twice: it reads both versions, then has to work out which one to change. The map is what makes reuse possible. Before writing new code, the agent looks for an interface that already does the job, and calls it.
+
+Reusable does not mean generic in advance. Code is extracted for reuse when a second caller needs it, not before, so reuse never turns into speculative abstraction.
+
+Shared code lives inside a domain wherever possible. A helper used by several parts of one domain, such as promotions and sales, goes in a `shared/` subfolder of their nearest common parent, here `pricing/shared/`, with its own `README.md` (*Kind: shared*). This keeps the top level to domains and junctions, so it does not grow with every helper. A helper that another top-level domain needs is first offered through the owning domain's interface. A top-level `shared/` folder is a last resort: used only when no single domain can own the helper, and declared in `MAP.md` with the reason. Shared code makes no decisions and imports nothing from its siblings; a helper that starts making a decision moves to the part of the domain that owns it.
+
+**Unused code is removed in the change that makes it unused.** When a refactor or a business-rule change leaves code, tests, or folders with no callers, the same segment deletes them, along with their lines in `README.md`. Version control keeps the history, so nothing is kept just in case.
+
+Two cases wait for a later segment. A public interface with consumers that deploy separately follows expand, then contract (Section 7). Anything with declared consumers the map cannot see, such as another repository, stays until they have moved (Section 9). Removing a whole domain, junction, adapter, or shared folder is a structural change: its own segment, logged in `MAP.md`.
+
+**Code carries no comments.** Behavior is documented once, in README.md, and anchored to tests. A comment is a second, unanchored copy: the agent reads it on every visit, and it drifts silently when the code changes. What a comment would say goes elsewhere:
+
+- why a rule exists → Rules, as its *Why:* line
+- traps and surprises → Hidden behavior
+- units and meaning → the name: `amountCents`, not `amount // cents`
+
+The only exceptions are lines a tool reads: lint and compiler directives, generated-section markers, and required license headers.
+
+### Keeping the docs small
+
+Moving behavior out of comments only helps if the docs stay small. A bloated `README.md` brings back the problem Wayfinding removes: the agent spends its context on prose instead of code.
+
+The balance runs both ways. Too little, and the agent reverse-engineers the code to find rules and traps. Too much, and it reads lines it does not need on every visit. A `README.md` answers three questions and nothing else: what this folder owns, which rules it enforces, and what will surprise someone working here.
+
+To keep it there:
+
+- **One line per rule.** The rule states what holds; its test carries the detail and the examples. *Why* is one line, not a history, which lives in version control.
+- **Every line earns its read.** If deleting a line would not change what an agent does, delete it.
+- **Nothing generated is written by hand,** and nothing the code says plainly is restated.
+- **What is no longer true is removed.** A hidden behavior that has gone away is deleted in the segment that ends it.
+- **Recipes only for tasks that recur.** A one-off procedure belongs in that segment's route, not the `README.md`.
+
+Size is also a boundary signal. A `README.md` that keeps growing usually means its folder owns decisions that change for different reasons. Apply the coherence test: if it fails, split off a child domain or adapter, each with its own small `README.md`; if it passes, trim. Wayfinding sets no fixed limit, but a team can choose a size at which a `README.md` is flagged for review.
 
 ### Who updates what
 
 | Section | Updated by | Validated by |
 | --- | --- | --- |
-| Generated (Files with signatures, Consumers) | A script, never the agent | CI: regenerated on every commit, fails if stale |
+| Generated (consumers, interface, tests) | A script, never the agent | CI: regenerated on every commit, fails if stale |
 | Rules, Hidden behavior, Recipes | The agent, in the same segment as the code | QA stage |
 | Ownership (Owns, Does not own, Mirrors, junction inputs) | The agent, in a separate segment | QA stage, as a boundary change |
 
-Ownership changes get their own segment because a document that always follows the code can never catch the code going wrong. If an agent misplaces a rule and then updates `DOMAIN.md` to claim the new location, declared and discovered information agree, every guardrail passes, and the mistake becomes policy. Isolating the change makes it visible to QA.
+Ownership changes get their own segment because a document that always follows the code can never catch the code going wrong. If an agent misplaces a rule and then updates `README.md` to claim the new location, declared and discovered information agree, every guardrail passes, and the mistake becomes policy. Isolating the change makes it visible to QA.
 
 ### Keeping the docs current
 
@@ -1033,7 +1072,7 @@ A stale doc is worse than no doc: the agent trusts it, and may "fix" correct cod
 ### The working loop
 
 ```
-1. Read       agent instructions → MAP.md → DOMAIN.md
+1. Read       agent instructions → MAP.md → README.md
 2. Route      write down decision, domain, consumers, segments
 3. Change     code and tests, one segment at a time
 4. Document   update Rules, Hidden behavior, Recipes in the same segment
@@ -1051,22 +1090,11 @@ Step 5 includes checks that need no judgment and run as scripts:
 
 - every *Enforced by* test exists and passes
 - every file and function named in a Recipe still exists
-- generated sections match a fresh regeneration, and an empty one is removed
+- generated sections match a fresh regeneration
 - no rule appears in more than one domain's docs
-- no function is written in two domains unless both declare it as a mirror
-
-### Many agents at once
-
-A route's segments name their domains, which makes the route a work plan. Segments on disjoint domains can be built in parallel by separate agents, each on its own branch and each allowed to write only inside the paths of its own domains. One lead agent owns what no single domain owns: it decides, before work begins, whether the route splits at all; it merges each branch and reviews it against the route; and it keeps `MAP.md` and the ownership changes, which are structural segments.
-
-A few rules keep this safe:
-
-- **Decide the split from the files each step touches.** A route whose steps form one chain is built by one agent; splitting it only adds merging.
-- **Shared code moves first.** If two parallel segments would need the same helper, moving it into a domain both import is its own earlier segment (Section 3). Otherwise each agent copies it.
-- **A dependent segment starts only once what it needs is merged.**
-- **Hand over what the next agent needs, not files to re-read:** a summary, the interfaces the branch changed, and the checks it ran. The next agent reads the signatures in Files.
-
-QA can split the same way. A QA lead may divide a review among read-only reviewers, each given its own acceptance criteria, and write the single report from their findings.
+- no comments in code, outside lint and compiler directives, generated-section markers, and license headers
+- every domain, child domain, junction, adapter, and shared folder has a README.md with a Kind line
+- a README.md past the size the team has chosen is flagged for QA, not failed
 
 ### The QA stage
 
@@ -1075,8 +1103,9 @@ QA validates that the docs still describe the system after the change. Beyond th
 - Every change to a business rule has a matching change in **Rules**.
 - **Owns** and **Does not own** are unchanged, or the change is isolated in its own segment and consistent with the guardrails.
 - Hidden behavior discovered during the work is recorded.
-- The route matches what the diff actually did, and the domains the diff touched are the domains the route named.
-- No helper was copied into a second domain instead of moved into one both import. Tooling finds identical copies; near-copies are QA's to find.
+- The route matches what the diff actually did.
+- Every line the segment added to a README.md is one an agent needs: no restated code, no rule copied from another folder.
+- Code, tests, and folders the change left unused are removed, or their removal is planned as a later segment.
 
 **QA is done by an independent agent by default.** It runs in a fresh context, with instructions different from the coding agent's and ideally on a different model, and sees only the route, the diff, and the docs — not the reasoning that produced them. An agent asked to confirm its own documentation will confirm its own mistakes. With an independent QA agent, the flow needs no person in the loop and adds no waiting.
 
@@ -1086,7 +1115,6 @@ QA validates that the docs still describe the system after the change. Beyond th
 - a rule cannot be anchored to a test, for example because it lives in an external system
 - an ownership change conflicts with the map or the guardrails
 - the docs and the code disagree and no unmodified test settles which is right
-- a fix has been sent back more than once for the same finding, which is a loop that more code will not break
 
 Escalated segments wait; everything else flows straight through. A rising escalation rate is itself a signal that the docs, tests, or domain boundaries need work.
 
@@ -1128,12 +1156,12 @@ Here is the procedure on a realistic request, from ticket to merged change.
 | Total discount capped at $50 | Discount cap | pricing (unchanged, must still hold) |
 | Loyalty discount on its own invoice line | Invoice layout | invoice |
 
-**Step 3: Read the domain docs.** The agent opens three `DOMAIN.md` files: pricing, its child promotions, and invoice. Two lines change the plan before any code is read:
+**Step 3: Read the domain docs.** The agent opens three `README.md` files: pricing, its child promotions, and invoice. Two lines change the plan before any code is read:
 
 - *pricing, Hidden behavior:* billing-sync (separate repository) re-prices open invoices nightly using `discountFor()`. Changing its signature breaks billing-sync.
 - *promotions, Hidden behavior:* Promo codes are imported nightly from the marketing tool. Direct edits to `pricing_promotions` are overwritten by the import.
 
-The first means `discountFor()` can be extended but not changed. The second means the loyalty bonus cannot simply be a row in the promotions table; it has to be a rule in code. For `discountFor()`'s shape it reads the signature in pricing's Files section; it does not open the code.
+The first means `discountFor()` can be extended but not changed. The second means the loyalty bonus cannot simply be a row in the promotions table; it has to be a rule in code.
 
 **Step 4: Write the route.** Before touching code, the agent writes down what it will change:
 
@@ -1163,11 +1191,11 @@ There is no fourth segment to remove anything. `amount` stays, so billing-sync a
 
 | Segment | Files changed | Checkpoint |
 | --- | --- | --- |
-| 1. promotions | `service.ts`, `service.test.ts`, `DOMAIN.md` | promotions tests |
+| 1. promotions | `service.ts`, `service.test.ts`, `README.md` | promotions tests |
 | 2. pricing | `service.ts`, `service.test.ts` | pricing tests, consumer tests |
 | 3. invoice | `service.ts`, `service.test.ts` | invoice tests |
 
-In segment 1, the docs change with the code. The promotions `DOMAIN.md` gains a rule anchored to its test:
+In segment 1, the docs change with the code. The promotions `README.md` gains a rule anchored to its test:
 
 ```markdown
 - Loyalty members get an extra 5% during holiday promotions.
@@ -1188,7 +1216,7 @@ In segment 2, the cap test gains a new case: a loyalty member whose combined dis
 
 ### Right-sizing
 
-Not all of this is needed on day one. A prototype needs agent instructions, `MAP.md`, and `DOMAIN.md` with anchored rules. Formal segment declarations, the QA stage, and semantic guardrails earn their cost once the system ships or grows large enough to drift. A useful rule: a decision gets a domain when a second place needs it.
+Not all of this is needed on day one. A prototype needs agent instructions, `MAP.md`, and `README.md` with anchored rules. Formal segment declarations, the QA stage, and semantic guardrails earn their cost once the system ships or grows large enough to drift. A useful rule: a decision gets a domain when a second place needs it.
 
 ## 13. Legacy Systems
 
@@ -1214,8 +1242,6 @@ The first goal is not to reorganize everything. It is to establish ownership for
 8. Move further decisions into domains as later changes require them.
 
 Legacy code starts out largely off the map. That is acceptable: the map grows with every change, and the architecture improves through normal development rather than a separate migration project.
-
-The map grows where work happens. Tooling reports a folder with no `DOMAIN.md` as not yet on the map, not as a failure, until a change touches code in it. That change's first segment then writes the folder's `DOMAIN.md` in its own commit, lists the child in its parent (or a top-level domain on `MAP.md`), moves the parent's rules about it into the child, and regenerates Files.
 
 ### Legacy data
 
@@ -1245,19 +1271,11 @@ Wayfinding makes a testable claim: systems with explicit ownership and bounded c
 | Change failure rate | Safety of segments |
 | Time to diagnose a failed change | Blast-radius claim |
 | Agent task success rate, with and without the map | The AI hypothesis |
-| Files opened per change, against the Files sections of the domains involved | Whether the map replaces reading |
-| Functions written in more than one domain | Duplicate authority |
 | Routes corrected by QA | Quality of routing |
 | QA escalation rate | Health of docs, tests, and boundaries |
 | Domain count and ownership changes per week | Structural drift |
 
 None of these requires special infrastructure; most can be derived from version control and CI history. Results from even one team would turn the paper's central hypothesis into evidence.
-
-### A first field report
-
-One early deployment is worth recording because it contradicts the easy expectation. A team gave AI agents a Wayfinding map for one application. Per plan step, the agents' cost matched that of applications without a map: they read `MAP.md` and `DOMAIN.md`, then read the code anyway, and they kept searching whole directories and kept a second code map beside the first. Three causes were found: the Files section listed export names only, so calling a function still meant opening its file; the agents' general instructions still said to search broadly, and nothing told them to trust the docs; and half the code sat outside the one source folder, so it had no route. The fixes are the ones now in this paper: signatures in Files, a fixed order for finding code, several source folders, and a listing request answered from Files instead of by walking the repository. A later observation, six copies of the same two helper functions, led to the one-copy rule (Section 3).
-
-The lesson is that the map is necessary and not sufficient. These fixes have not yet been measured against a baseline, so this report is a hypothesis about cause, not a result.
 
 ## 16. Example Tooling
 
@@ -1269,14 +1287,12 @@ A supporting tool might offer commands such as:
 wayfind map                       # scan the repository and update MAP.md
 wayfind map --check               # fail if discovered and declared information disagree
 wayfind who-uses pricing          # list discovered and declared consumers
-wayfind files pricing             # print a domain's Files section with signatures
-wayfind dupes                     # list functions written in more than one domain
 wayfind find savings              # locate the domain that owns a term or decision
 wayfind route pricing.discountFor # propose a route for a change
 wayfind segment --check           # compare a change against its declared segment
 ```
 
-The map is only as trustworthy as its discovery, so real tooling should derive structure from compiler or AST APIs where available. The example repository's `tools/check.ts` is a working version for TypeScript: it checks the structural guardrails and doc checks, generates Files and Consumers, and finds duplicated functions. Existing architecture-rule tools can implement most structural guardrails today.
+The map is only as trustworthy as its discovery, so real tooling should derive structure from compiler or AST APIs where available. Existing architecture-rule tools can implement most structural guardrails today.
 
 The architectural requirement is not any particular command. It is that ownership, domains, consumers, and segments can be inspected and checked.
 
@@ -1311,6 +1327,7 @@ The individual ideas behind Wayfinding are not new, and the paper does not claim
 - **The single-responsibility principle** supplies the coherence test for domains: things that change for the same reason belong together.
 - **Bounded contexts** in domain-driven design draw boundaries around consistent models and language. A Wayfinding domain is drawn around decision ownership instead. The two often coincide, but the test differs: who owns the decision, not which model it belongs to.
 - **Code navigation research** has borrowed wayfinding ideas before. TagSEA (Storey et al., 2007) let developers create shared waypoints through source code.
+- **Hexagonal architecture** (Cockburn, 2005) separates an application's core from the adapters that connect it to the outside world. Wayfinding borrows only the adapter idea, as a way to tell decisions from the code that carries data in and out (Section 4).
 - **Architecture-rule tools** already check dependency rules mechanically and can implement most structural guardrails.
 
 Wayfinding's proposed contribution is the way these are organized around a single problem, change navigation:
@@ -1356,7 +1373,7 @@ Wayfinding is not:
 
 - a programming language or a framework
 - an AI coding framework or a set of AI prompt rules
-- a context budget or a limit on how much an agent may read
+- a context budget or a limit on how much an agent may read; it reduces what there is to read rather than capping it
 - a specific set of naming, file-size, or directory conventions; some convention is needed so guardrails can check it, but which one is yours to choose
 - a replacement for testing
 - a guarantee that static analysis captures every runtime dependency
@@ -1389,7 +1406,7 @@ Its foundational principle is:
 
 > Every important decision is owned by exactly one domain.
 
-For humans, this reduces architectural friction. For AI agents, it reduces how much of the repository they must reconstruct before making a change. For both, the result is the same: a shorter, more predictable route from requirement to safe change.
+For humans, this reduces architectural friction. For AI agents, it reduces how much of the repository they must read and reconstruct before making a change. For both, the result is the same: a shorter, more predictable route from requirement to safe change.
 
 ## References
 
@@ -1398,4 +1415,5 @@ For humans, this reduces architectural friction. For AI agents, it reduces how m
 - Hunt, A. and Thomas, D. (1999). *The Pragmatic Programmer*. Addison-Wesley.
 - Martin, R. C. (2003). *Agile Software Development: Principles, Patterns, and Practices*. Prentice Hall.
 - Evans, E. (2003). *Domain-Driven Design*. Addison-Wesley.
+- Cockburn, A. (2005). [Hexagonal Architecture](https://alistaircockburn.com/Articles/Hexagonal-Architecture).
 - Storey, M.-A., et al. (2007). [How Programmers Can Turn Comments into Waypoints for Code Navigation](https://dominoweb.draco.res.ibm.com/reports/rc24399.pdf). IBM Research Report RC24399.

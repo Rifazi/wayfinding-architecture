@@ -1,4 +1,3 @@
-// End-to-end: an order placed over HTTP, then its invoice.
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { Server } from 'node:http'

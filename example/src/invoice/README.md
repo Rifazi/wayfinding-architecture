@@ -1,8 +1,9 @@
 # invoice
 
+Kind: domain
 Owns: invoice layout
 Does not own: any amount on the invoice (see order-total)
-Interface: renderInvoice()   (HTTP: GET /invoices/:orderId)
+Interface: renderInvoice()
 Checkpoint: npm run checkpoint -- invoice
 
 ## Rules
@@ -25,13 +26,7 @@ Checkpoint: npm run checkpoint -- invoice
 2. Update the fixed-order test in service.test.ts
 3. Update "Rules"
 
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type Invoice = {orderId: string; lines: string[]}`
-  - `money(cents: number): string`
-  - `layout(total: OrderTotal): string[]`
-  - `renderInvoice(orderId: string): Promise<Invoice>`
-- `routes.ts`: routes
-- tests: `service.test.ts`
+## Contains
+<!-- generated: do not edit -->
+- routes (adapter)
 <!-- end generated -->

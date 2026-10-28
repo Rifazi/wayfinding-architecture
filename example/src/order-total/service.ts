@@ -1,4 +1,3 @@
-// The order-total junction. Its inputs are reached only through their services.
 import { db } from '../db.ts'
 import { OrderTotalSnapshot } from './model.ts'
 import { priceFor, type PriceRequest } from '../pricing/service.ts'
@@ -15,10 +14,6 @@ export type OrderTotal = {
   total: number
 }
 
-// The combination rule, and nothing else:
-//   1. discount first; the discounted subtotal never goes below zero
-//   2. the free-shipping threshold uses the discounted subtotal
-//   3. tax applies to the discounted subtotal plus shipping
 export async function combine(
   subtotal: number,
   discount: number,

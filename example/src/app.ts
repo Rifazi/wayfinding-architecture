@@ -1,9 +1,8 @@
-// The Express app: mounts each top-level domain's routes, nothing else.
 import express, { type ErrorRequestHandler } from 'express'
-import { routes as customers } from './customers/routes.ts'
-import { routes as pricing } from './pricing/routes.ts'
-import { routes as checkout } from './checkout/routes.ts'
-import { routes as invoice } from './invoice/routes.ts'
+import { routes as customers } from './customers/routes/routes.ts'
+import { routes as pricing } from './pricing/routes/routes.ts'
+import { routes as checkout } from './checkout/routes/routes.ts'
+import { routes as invoice } from './invoice/routes/routes.ts'
 
 export const app = express()
 app.use(express.json())

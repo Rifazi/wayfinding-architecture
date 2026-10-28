@@ -1,9 +1,9 @@
 # Map
 
 <!--
-One line per top-level domain and junction. Child domains are listed in
-their parent's DOMAIN.md, not here. Keep this file short enough to read in
-full on every task.
+One line per top-level domain and junction. Child domains, adapters, and
+shared folders are listed in their parent's README.md, not here. Keep this
+file short enough to read in full on every task.
 -->
 
 | Domain | Owns | Interface |
@@ -28,4 +28,12 @@ Workflows that cross domains and leave the code you control.
 ### <name>
 1. <step>    → <domain>.<function>()
 2. <step in an external system>
+
+## External systems
+Each outside system, and the one domain whose adapter reaches it.
+- <system>: <domain>/<adapter>
+
+## Shared
+A top-level shared folder is a last resort. Declare it here with the reason.
+- shared: <why no single domain can own these helpers>
 -->

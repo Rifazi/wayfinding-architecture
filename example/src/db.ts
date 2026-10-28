@@ -1,6 +1,3 @@
-// Database connection. SQLite in memory by default, so the example needs no
-// database server; set DB_FILE to keep data between runs. Switch `type` to
-// 'postgres' for production. The schema is built from every domain's entities.
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 import { Customer } from './customers/model.ts'
@@ -15,5 +12,5 @@ export const db = new DataSource({
   type: 'better-sqlite3',
   database: process.env.DB_FILE ?? ':memory:',
   entities: [Customer, PricingSettings, CustomerPrice, Promotion, Sale, ShippingRate, OrderTotalSnapshot],
-  synchronize: true, // creates the tables from the entities; use migrations in production
+  synchronize: true,
 })

@@ -1,8 +1,8 @@
 # pricing
 
+Kind: domain
 Owns: final price (customer price, then the better of promotion or sale); discount cap
 Owns data: pricing_settings
-Child domains: customer-prices, promotions, sales
 Does not own: tax, shipping, order total (see order-total); loyalty tier (see customers)
 Interface: priceFor(), discountFor()
 Checkpoint: npm run checkpoint -- pricing
@@ -17,6 +17,8 @@ Checkpoint: npm run checkpoint -- pricing
   Enforced by: service.test.ts › "promotion and sale do not stack"
 
 ## Hidden behavior
+- pricing_settings holds one row; finance changes the discount cap there
+  without a code change.
 - billing-sync (separate repository) re-prices open invoices nightly
   using discountFor(). Changing its signature breaks billing-sync.
 
@@ -27,18 +29,10 @@ Checkpoint: npm run checkpoint -- pricing
 3. Add a test named after the new rule in service.test.ts
 4. Run the checkpoint and `npm run check`
 
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type Item = {productId: string; quantity: number}`
-  - `type PriceRequest = {customerId: string; items: Item[]; promoCodes?: string[]; at: Date}`
-  - `type Discount = {amount: number}`
-  - `type Price = {subtotal: number; discount: Discount; total: number}`
-  - `priceFor(request: PriceRequest): Promise<Price>`
-  - `discountFor(request: PriceRequest): Promise<Discount>`
-- `model.ts`: PricingSettings
-- `routes.ts`: routes
-- tests: `service.test.ts`
+## Contains
+<!-- generated: do not edit -->
+- customer-prices, promotions, sales (child domains)
+- routes (adapter)
 <!-- end generated -->
 
 ## Consumers

@@ -14,7 +14,6 @@ test('starts from the customer price', async () => {
 })
 
 test('caps discount at $50', async () => {
-  // 15% of $480 is $72; the cap holds it to $50.
   const price = await priceFor({
     customerId: 'c-ben',
     items: [{ productId: 'p-grinder', quantity: 2 }],
@@ -26,7 +25,6 @@ test('caps discount at $50', async () => {
 })
 
 test('promotion and sale do not stack', async () => {
-  // Kettle sale is 20% ($13.00); WELCOME15 is 15% ($9.75). The sale wins alone.
   const price = await priceFor({
     customerId: 'c-ben',
     items: [{ productId: 'p-kettle', quantity: 1 }],

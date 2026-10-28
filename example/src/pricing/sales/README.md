@@ -1,5 +1,6 @@
 # sales
 
+Kind: child domain
 Parent: pricing
 Owns: time-limited markdowns on products
 Owns data: pricing_sales
@@ -17,16 +18,6 @@ Checkpoint: npm run checkpoint -- pricing/sales
 ### Schedule a sale
 1. Insert a row into pricing_sales with the product and window
 2. Run the checkpoint
-
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type SaleLine = {productId: string; quantity: number; unitPrice: number}`
-  - `type AppliedSale = {products: string[]; amount: number}`
-  - `saleFor(lines: SaleLine[], at: Date): Promise<AppliedSale | null>`
-- `model.ts`: Sale
-- tests: `service.test.ts`
-<!-- end generated -->
 
 ## Consumers
 <!-- generated: do not edit -->

@@ -1,5 +1,6 @@
 # customer-prices
 
+Kind: child domain
 Parent: pricing
 Owns: each product's unit price for a given customer (list or contract price)
 Owns data: pricing_customer_prices
@@ -15,6 +16,7 @@ Checkpoint: npm run checkpoint -- pricing/customer-prices
   Enforced by: service.test.ts › "unknown product is rejected"
 
 ## Hidden behavior
+- A row with no customer ID is the list price.
 - Contract prices are entered by the sales team in the admin tool and take
   effect immediately; there is no approval step.
 
@@ -22,16 +24,6 @@ Checkpoint: npm run checkpoint -- pricing/customer-prices
 ### Add a contract price
 1. Insert a row with the customer's ID into pricing_customer_prices
 2. Add a case to service.test.ts if the contract has a new shape
-
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type ItemRequest = {productId: string; quantity: number}`
-  - `type PricedItem = ItemRequest & {unitPrice: number}`
-  - `pricedItemsFor(customerId: string, items: ItemRequest[]): Promise<PricedItem[]>`
-- `model.ts`: CustomerPrice
-- tests: `service.test.ts`
-<!-- end generated -->
 
 ## Consumers
 <!-- generated: do not edit -->

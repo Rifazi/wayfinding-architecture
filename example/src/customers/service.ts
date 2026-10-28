@@ -3,7 +3,6 @@ import { Customer } from './model.ts'
 
 export type LoyaltyTier = 'none' | 'silver' | 'gold'
 
-// What other domains see: the profile, without the spend behind the tier.
 export type CustomerProfile = { id: string; name: string; region: string }
 
 async function findCustomer(id: string): Promise<Customer> {
@@ -19,7 +18,6 @@ export async function customerFor(id: string): Promise<CustomerProfile> {
 
 export async function loyaltyTierFor(id: string): Promise<LoyaltyTier> {
   const customer = await findCustomer(id)
-  // Loyalty tier is earned from lifetime spend.
   if (customer.lifetimeSpendCents >= 100_000) return 'gold'
   if (customer.lifetimeSpendCents >= 25_000) return 'silver'
   return 'none'

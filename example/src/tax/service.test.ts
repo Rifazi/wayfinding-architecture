@@ -9,5 +9,5 @@ test("tax uses the region's rate", () => {
 })
 
 test('tax is rounded to the nearest cent', () => {
-  assert.equal(taxFor(1_001, 'TX').amount, 83) // 82.58 cents
+  assert.equal(taxFor(1_001, 'TX').amount, 83)
 })

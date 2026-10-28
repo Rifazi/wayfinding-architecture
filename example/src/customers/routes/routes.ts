@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { customerFor, loyaltyTierFor } from './service.ts'
+import { customerFor, loyaltyTierFor } from '../service.ts'
 
 export const routes = Router()
 

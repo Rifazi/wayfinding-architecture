@@ -1,5 +1,3 @@
-// Development and test data. Not a domain: it writes every domain's tables
-// directly, so nothing in src/<domain>/ may import it.
 import { db } from './db.ts'
 import { Customer } from './customers/model.ts'
 import { PricingSettings } from './pricing/model.ts'

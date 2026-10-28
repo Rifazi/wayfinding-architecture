@@ -1,5 +1,3 @@
-// Pricing combines its children: the customer's price, then the better of
-// any promotion or sale, then the cap on the total discount.
 import { db } from '../db.ts'
 import { PricingSettings } from './model.ts'
 import { pricedItemsFor } from './customer-prices/service.ts'
@@ -15,10 +13,10 @@ export type PriceRequest = {
   at: Date
 }
 
-export type Discount = { amount: number } // cents, after the cap
+export type Discount = { amount: number }
 
 export type Price = {
-  subtotal: number // cents, at the customer's prices
+  subtotal: number
   discount: Discount
   total: number
 }
@@ -31,9 +29,7 @@ export async function priceFor(request: PriceRequest): Promise<Price> {
   const sale = await saleFor(lines, request.at)
   const settings = await db.getRepository(PricingSettings).findOneByOrFail({ id: 1 })
 
-  // A promotion and a sale never stack; the customer gets the better one.
-  const best = Math.max(promotion?.amount ?? 0, sale?.amount ?? 0)
-  // The total discount is capped (pricing_settings, $50 by default).
+  const best = Math.max(promotion?.amountCents ?? 0, sale?.amount ?? 0)
   const amount = Math.min(best, settings.discountCapCents)
 
   return { subtotal, discount: { amount }, total: subtotal - amount }

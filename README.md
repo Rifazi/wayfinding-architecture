@@ -26,26 +26,48 @@ Together they form a **route** from requirement to checkpoint:
 Requirement → Decision → Domain → Public Interface → Consumers → Segment → Change → Checkpoint
 ```
 
+### Decisions and adapters
+
+Code in a domain is one of two kinds. **Decisions** are the rules the domain owns. **Adapters** connect the domain to something outside it: HTTP, a database, a queue, an external system, or legacy code. An adapter makes no business decisions; it may hold technical ones about its outside system, such as how failed calls are retried.
+
+Sorting code this way is how the pieces of functionality are drawn. Set the adapters aside, and what remains is decisions, grouped into domains by what changes together. Each adapter then belongs to the one domain it serves, in its own folder with its own `README.md`:
+
+```
+src/payments/
+├── service.ts       decisions and the public interface
+├── model.ts         database adapter (a file: it only maps tables)
+├── README.md        Kind: domain
+├── routes/          inbound adapter: HTTP
+│   └── README.md    Kind: adapter
+└── stripe/          outbound adapter: Stripe
+    └── README.md    Kind: adapter
+```
+
+Only the domain's service calls an outbound adapter, and an inbound adapter calls only that service. Each external system is reached through one domain's adapter, so every rule about it has one owner. The idea is borrowed from hexagonal architecture, without its ports and layers (paper, Section 4).
+
 | Concept | What it is |
 | --- | --- |
 | Domain | Owns a set of decisions and the data they need. Only it writes its own data. |
 | Child domain | A domain inside a domain, with the same layout; visible only to its parent. |
 | Junction | A domain whose rules combine other domains' decisions, such as an order total. |
-| Map | `MAP.md` and one `DOMAIN.md` per domain: discovered from code (Files with signatures, Consumers), declared by people, checked by tools. |
-| One copy | Every decision, and every helper, has exactly one copy. Shared code moves into a domain both users import. |
+| Adapter | Code that connects a domain to something outside it: HTTP, a database, an external system. It makes no business decisions. |
+| Shared | Helpers that make no decisions, kept in a `shared/` folder inside the domain whose parts use them. |
+| Map | `MAP.md` and one `README.md` per folder, opening with a *Kind* line: discovered from code (Contains, Consumers), declared by people, checked by tools. |
 | Segment | A bounded, independently validatable and revertible step of a larger change. |
 | Guardrails | Structural checks run by tools; semantic checks decided by an independent QA agent. |
 
 ## For AI agents
 
-Section 12 of the paper is an operating procedure for agents. The agent reads `AGENTS.md`, then `MAP.md`, then the relevant `DOMAIN.md` files *first*; it updates them *last*; and an independent QA agent validates the code and the docs together. A person steps in only on escalation.
+Section 12 of the paper is an operating procedure for agents. The agent reads `AGENTS.md`, then `MAP.md`, then the relevant `README.md` files *first*; it updates them *last*; and an independent QA agent validates the code and the docs together. A person steps in only on escalation.
+
+The procedure also keeps what an agent reads small: code is only as large as its decisions, carries no comments, reuses what already exists, and loses what a change leaves unused. The docs stay small too, so they do not bring the context problem back.
 
 ## What's in this repository
 
 | Path | Contents |
 | --- | --- |
 | [`paper/`](paper/) | The white paper |
-| [`templates/`](templates/) | Copy-ready `AGENTS.md`, `MAP.md`, and `DOMAIN.md` to adopt Wayfinding in your own repository |
+| [`templates/`](templates/) | Copy-ready `AGENTS.md`, `MAP.md`, and a folder `README.md` to adopt Wayfinding in your own repository |
 | [`example/`](example/) | A small Express + TypeORM app laid out the Wayfinding way, with tests and the mechanical checks as a script |
 
 ### Try it in five minutes
@@ -63,7 +85,7 @@ Then give your coding agent the ticket from the paper's worked example (Section 
 
 ## Status and feedback
 
-Version 1.1. This is a proposal, and its central claim is a hypothesis (Section 18). Feedback, counterexamples, and reports from teams that try it are very welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Version 1.2. This is a proposal, and its central claim is a hypothesis (Section 18). Feedback, counterexamples, and reports from teams that try it are very welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citing
 

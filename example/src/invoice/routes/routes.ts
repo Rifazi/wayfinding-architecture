@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { renderInvoice } from './service.ts'
+import { renderInvoice } from '../service.ts'
 
 export const routes = Router()
 

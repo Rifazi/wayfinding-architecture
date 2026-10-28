@@ -14,7 +14,6 @@ test('discount applies before shipping and tax', async () => {
 })
 
 test('free-shipping threshold uses the discounted subtotal', async () => {
-  // $80 before discount qualifies; $70 after discount does not.
   const t = await combine(8_000, 1_000, flatShipping, tenPercentTax)
   assert.equal(t.shipping, 799)
 })
@@ -32,6 +31,5 @@ test('order total combines pricing, shipping, and tax', async () => {
     items: [{ productId: 'p-mug', quantity: 2 }],
     at: new Date('2026-10-15'),
   })
-  // $36.00 + $12.99 shipping, 7.25% tax on $48.99
   assert.deepEqual(t, { subtotal: 3_600, discount: 0, shipping: 1_299, tax: 355, total: 5_254 })
 })

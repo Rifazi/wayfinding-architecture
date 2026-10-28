@@ -2,19 +2,21 @@
 
 A small Express app laid out with Wayfinding Architecture, using TypeORM as
 the ORM. It is the codebase the paper's examples describe: pricing with three
-child domains, an `order-total` junction, and consumers that reach other
-domains only through their services.
+child domains, an `order-total` junction, consumers that reach other domains
+only through their services, and HTTP routes kept apart from the decisions as
+`routes/` adapters.
 
 ```
 src/
 ├── app.ts                mounts each domain's routes
 ├── db.ts                 database connection; registers every domain's entities
-├── seed.ts               development and test data
+├── seed.ts               development and test data; not a domain, so no domain imports it
 ├── customers/            customer profile, loyalty tier
 ├── pricing/              final price, discount cap
 │   ├── customer-prices/  child domain: list and contract prices
 │   ├── promotions/       child domain: promo codes
-│   └── sales/            child domain: product markdowns
+│   ├── sales/            child domain: product markdowns
+│   └── routes/           adapter: HTTP endpoints for price quotes
 ├── tax/                  tax amount (no stored data)
 ├── shipping/             shipping charge
 ├── order-total/          junction: discount → shipping → tax
@@ -27,21 +29,24 @@ Every domain, including each child, has the same files:
 ```
 model.ts          its entities (TypeORM); private to the domain
 service.ts        its interface and business rules; the only file other domains import
-routes.ts         its HTTP endpoints, mounted in app.ts
 service.test.ts
-DOMAIN.md         header, rules, hidden behavior, recipes, and two generated sections
+README.md         its map entry: Kind, ownership, rules, hidden behavior, recipes
+routes/           an adapter: its HTTP endpoints, mounted in app.ts, with its own README.md
 ```
 
-A `DOMAIN.md` has only what it needs: Owns, Interface and Checkpoint are required;
-Parent, Owns data, Child domains, Does not own, and every section are left out when
-they would say "none". The generated **Files** section lists each file with its
-exports, and the `service.ts` entry carries each signature, so an agent can call a
-domain without opening its code. The generated **Consumers** section lists who
-imports it.
+Every folder of code has one `README.md`, and its first line after the title
+says what the folder is: `Kind: domain`, `child domain`, `junction`, `adapter`,
+or `shared`. Owns, Interface and Checkpoint are required; Parent, Owns data,
+Does not own, and every section are left out when they would say "none". Two
+sections are generated: **Contains** lists the child domains and adapters
+inside the folder, and **Consumers** lists who imports it.
 
 A domain that stores nothing (tax, checkout, invoice) has no `model.ts`. A
 domain with no endpoints of its own (the child domains, tax, shipping,
-order-total) has no `routes.ts`.
+order-total) has no `routes/` adapter.
+
+The code carries no comments. What a comment would say is in the folder's
+`README.md`, as a rule anchored to a test or as hidden behavior.
 
 A model is a plain entity class:
 
@@ -85,21 +90,25 @@ Set `DB_FILE=dev.sqlite` to keep data between runs.
 
 Structural guardrails (paper, Section 10):
 
-- other domains are reached only through `service.ts`; `model.ts` and `routes.ts` stay private
-- child domains are visible only inside their parent
+- other domains are reached only through `service.ts`; `model.ts` and adapters stay private
+- an adapter is called only by its own domain's `service.ts` (routes are mounted by `app.ts`), and an inbound adapter calls only that service
+- child domains and `shared/` folders are visible only inside their parent; shared code imports nothing from other folders
 - children never depend on their parent; no dependency cycles
-- domain code imports nothing outside the domains except `db.ts`
+- folder code imports nothing outside the folders except `db.ts`
 - every table is defined by exactly one domain's `model.ts`, carries its prefix, and is listed under "Owns data"
-- every top-level domain is on `MAP.md`, and junctions are marked as junctions
-- every folder of code is a domain: a folder with code and no `DOMAIN.md` fails
-- one copy of every helper: the same function (compared by tokens, not formatting) written in two domains fails, unless both declare it under Mirrors
+- every top-level domain is on `MAP.md`, junctions are marked as junctions, and a top-level `shared/` folder is declared under "Shared"
+- dead code: a file nothing imports, or an export nothing uses, fails unless its README.md declares the consumer (as pricing does for billing-sync)
+- reuse: the same function (compared by tokens, not formatting) written in two folders fails, unless both declare it under Mirrors
 
 Doc checks (Section 12):
 
+- every folder of code has a `README.md` with a valid Kind line
+- no comments in code, outside lint and compiler directives and license headers
 - every rule has an *Enforced by* test, and that test exists
-- no rule appears in two domains
+- no rule appears in two folders
 - every file named in a Recipe exists
-- the generated Files and Consumers sections match the code; an empty one is removed
+- the generated Contains and Consumers sections match the code; an empty one is removed
+- a `README.md` longer than 60 lines is flagged for QA (a warning, not a failure)
 
 Try breaking one: import `../pricing/promotions/service.ts` from
 `src/invoice/service.ts`, or paste `layout()` from `src/invoice/service.ts` into
@@ -113,7 +122,7 @@ Give your coding agent this ticket, from Section 12 of the paper:
 > discount is still capped at $50. Show the loyalty discount as its own line
 > on the invoice.
 
-Watch whether it reads `MAP.md` and the relevant `DOMAIN.md` files first,
+Watch whether it reads `MAP.md` and the relevant `README.md` files first,
 notices the Hidden behavior lines that shape the plan (billing-sync, the
 nightly promotions import, and the invoice parser), writes a route, and
 finishes with `npm test` and `npm run check` passing. Then hand the route, the

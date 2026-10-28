@@ -10,7 +10,9 @@
 | checkout | checkout flow | startCheckout() |
 | invoice | invoice layout | renderInvoice() |
 
-Each domain's interface is its `service.ts`. HTTP routes are mounted in `src/app.ts`.
+Each domain's interface is its `service.ts`. HTTP routes are adapters in each
+domain's `routes/` folder, mounted in `src/app.ts`. Money is integer cents
+throughout.
 
 ## Structural changes
 - 2026-10-09  created order-total (junction): combines pricing, shipping, tax

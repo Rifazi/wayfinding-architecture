@@ -1,5 +1,6 @@
 # customers
 
+Kind: domain
 Owns: customer profile; loyalty tier
 Owns data: customers
 Does not own: what a customer pays (see pricing)
@@ -23,14 +24,7 @@ Checkpoint: npm run checkpoint -- customers
 2. Add a case to the tier test in service.test.ts
 3. Update "Rules" and run the checkpoint
 
-## Files
-<!-- generated: files, do not edit -->
-- `service.ts` (interface):
-  - `type LoyaltyTier = 'none' | 'silver' | 'gold'`
-  - `type CustomerProfile = {id: string; name: string; region: string}`
-  - `customerFor(id: string): Promise<CustomerProfile>`
-  - `loyaltyTierFor(id: string): Promise<LoyaltyTier>`
-- `model.ts`: Customer
-- `routes.ts`: routes
-- tests: `service.test.ts`
+## Contains
+<!-- generated: do not edit -->
+- routes (adapter)
 <!-- end generated -->

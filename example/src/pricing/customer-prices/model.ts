@@ -1,6 +1,5 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm'
 
-// A row with no customerId is the list price.
 @Entity('pricing_customer_prices')
 export class CustomerPrice {
   @PrimaryColumn('text') id: string

@@ -26,6 +26,25 @@ Together they form a **route** from requirement to checkpoint:
 Requirement → Decision → Domain → Public Interface → Consumers → Segment → Change → Checkpoint
 ```
 
+### Decisions and adapters
+
+Code in a domain is one of two kinds. **Decisions** are the rules the domain owns. **Adapters** connect the domain to something outside it: HTTP, a database, a queue, an external system, or legacy code. An adapter makes no business decisions; it may hold technical ones about its outside system, such as how failed calls are retried.
+
+Sorting code this way is how the pieces of functionality are drawn. Set the adapters aside, and what remains is decisions, grouped into domains by what changes together. Each adapter then belongs to the one domain it serves, in its own folder with its own `README.md`:
+
+```
+src/payments/
+├── service.ts       decisions and the public interface
+├── model.ts         database adapter (a file: it only maps tables)
+├── README.md        Kind: domain
+├── routes/          inbound adapter: HTTP
+│   └── README.md    Kind: adapter
+└── stripe/          outbound adapter: Stripe
+    └── README.md    Kind: adapter
+```
+
+Only the domain's service calls an outbound adapter, and an inbound adapter calls only that service. Each external system is reached through one domain's adapter, so every rule about it has one owner. The idea is borrowed from hexagonal architecture, without its ports and layers (paper, Section 4).
+
 | Concept | What it is |
 | --- | --- |
 | Domain | Owns a set of decisions and the data they need. Only it writes its own data. |

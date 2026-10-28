@@ -2,8 +2,9 @@
 
 A small Express app laid out with Wayfinding Architecture, using TypeORM as
 the ORM. It is the codebase the paper's examples describe: pricing with three
-child domains, an `order-total` junction, and consumers that reach other
-domains only through their services.
+child domains, an `order-total` junction, consumers that reach other domains
+only through their services, and HTTP routes kept apart from the decisions as
+`routes/` adapters.
 
 ```
 src/
